@@ -1,7 +1,9 @@
 import pandas as pd
 import argparse as ap
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 import pyexcel as pe
+import openpyxl
+from file_setup import get_dir, file_check
 
 def cli_parse():
     parser = ap.ArgumentParser(description="A CLI program to track your daily mood.")
@@ -9,15 +11,44 @@ def cli_parse():
     parser.add_argument("-e", "--enter", action="store_true", help="Input your daily mood.")
     parser.add_argument("-l", "--late", action="store_true", help="Use if you are submitting past 11:59pm.")
     parser.add_argument("-i", "--important", action="store_true", help="Mark as an important day.")
+    parser.add_argument("-d", "--enter-date", type=str, help="Enter data for a specific day (yyyymmdd).", default=None)
+    parser.add_argument("-t", "--test", action="store_true", help="fuck you")
 
     args = parser.parse_args()
 
-    if args.enter:
+    if args.test:
+        sprdsht_dir = get_dir()
+        file_check(sprdsht_dir)
+        sort_data(sprdsht_dir)
+
+    if args.enter or args.enter_date:
         late = args.late
         importance = args.important
+        input_date = args.enter_date
         mood = get_mood()
         desc = get_desc()
-        write_mood(mood, late, desc, importance)
+        sprdsht_dir = get_dir()
+        file_check(sprdsht_dir)
+        write_mood(mood, late, desc, importance, input_date, sprdsht_dir)
+        if args.enter_date:
+            sort_data(sprdsht_dir)
+
+def sort_data(sprdsht_dir: str):
+    wb = openpyxl.load_workbook(sprdsht_dir)
+    ws = wb.active
+
+    excel_data = []
+    for row in ws.iter_rows(min_row = 2, values_only = True):
+        excel_data.append(row)
+
+    excel_data.sort(key=lambda row:datetime.strptime(row[0], '%Y-%m-%d'))
+
+    ws.delete_rows(2, ws.max_row-1)
+
+    for row in excel_data:
+        ws.append(row)
+
+    wb.save(sprdsht_dir)
 
 def get_desc() -> str:
     return input("Please input a short description of your mood throughout the day: ")
@@ -35,39 +66,31 @@ def get_mood() -> int:
     else:
         return mood_int
 
-def exists(input_date: str, sheet) -> bool:
-    if int(sheet.number_of_rows()) >= 2:
-        last_row = sheet.column[0][-1]
-        second_last_row = sheet.column[0][-2]
-        if last_row == input_date:
-            return True
-        elif second_last_row == input_date:
-            return True
-        else: 
-            return False
-    else:
+def exists(input_date: str, ws) -> bool:
+    if ws.max_row >= 2:
+        for rows in range(1, ws.max_row):
+            if ws.cell(row=rows, column=1).value == input_date:
+                return True
         return False
 
-def write_mood(mood: int, late: bool, desc: str, importance: bool):
-    if not late:
+def write_mood(mood: int, late: bool, desc: str, importance: bool, input_date: str, sprdsht_dir: str):
+    if input_date != None:
+        input_date = datetime.strptime(input_date, '%Y%m%d').date()
+    elif not late:
         input_date = date.today()
     else:
         input_date = date.today() - timedelta(days = 1)
 
-    print(input_date, late)
-
-    file = "/home/fribbit/Documents/personal_documents/journaling/mood_tracker.ods"
-
+    wb = openpyxl.load_workbook(sprdsht_dir)
+    ws = wb.active
     data = [str(input_date), str(mood), importance, desc]
 
-    sheet = pe.get_sheet(file_name=file)
-    print(exists(str(input_date), sheet))
-    if exists(str(input_date), sheet):
+    if exists(str(input_date), ws):
         print("You've already entered data.")
         exit()
 
-    sheet.row += data
-    sheet.save_as(file)
+    ws.append(data)
+    wb.save(sprdsht_dir)
 
 def main():
     cli_parse()
