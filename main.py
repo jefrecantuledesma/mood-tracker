@@ -4,6 +4,7 @@ from datetime import date, timedelta, datetime
 import pyexcel as pe
 import openpyxl
 from file_setup import get_dir, file_check
+from statistics import obtain_data, visualize
 
 def cli_parse():
     parser = ap.ArgumentParser(description="A CLI program to track your daily mood.")
@@ -19,7 +20,8 @@ def cli_parse():
     if args.test:
         sprdsht_dir = get_dir()
         file_check(sprdsht_dir)
-        sort_data(sprdsht_dir)
+        dates, moods = obtain_data(30, sprdsht_dir)
+        visualize(dates, moods)
 
     if args.enter or args.enter_date:
         late = args.late
@@ -73,7 +75,7 @@ def exists(input_date: str, ws) -> bool:
                 return True
         return False
 
-def write_mood(mood: int, late: bool, desc: str, importance: bool, input_date: str, sprdsht_dir: str):
+def write_mood(mood: int, late: bool, desc: str, importance: bool, input_date: str, sprdsht_dir: str) -> None:
     if input_date != None:
         input_date = datetime.strptime(input_date, '%Y%m%d').date()
     elif not late:
