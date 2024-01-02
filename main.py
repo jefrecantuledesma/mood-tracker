@@ -5,8 +5,19 @@ import pyexcel as pe
 import openpyxl
 from file_setup import get_dir, file_check
 from statistics import obtain_data, visualize
+from dataclasses import dataclass
+
+@dataclass
+class Entry:
+    late: bool 
+    importance: bool
+    input_date: str
+    mood: int
+    description: str
+    sprdsht_dir: str
 
 def cli_parse():
+    
     parser = ap.ArgumentParser(description="A CLI program to track your daily mood.")
 
     parser.add_argument("-e", "--enter", action="store_true", help="Input your daily mood.")
@@ -17,6 +28,8 @@ def cli_parse():
 
     args = parser.parse_args()
 
+    # Command for testing, modify appropriately 
+    # if you are testing the code.
     if args.test:
         sprdsht_dir = get_dir()
         file_check(sprdsht_dir)
@@ -31,7 +44,8 @@ def cli_parse():
         desc = get_desc()
         sprdsht_dir = get_dir()
         file_check(sprdsht_dir)
-        write_mood(mood, late, desc, importance, input_date, sprdsht_dir)
+        entry = Entry(args.late, args.important, args.enter_date, mood, desc, sprdsht_dir)
+        write_mood(entry)
         if args.enter_date:
             sort_data(sprdsht_dir)
 
@@ -39,14 +53,17 @@ def sort_data(sprdsht_dir: str):
     wb = openpyxl.load_workbook(sprdsht_dir)
     ws = wb.active
 
+    # Takes the data from the spreadsheet 
     excel_data = []
     for row in ws.iter_rows(min_row = 2, values_only = True):
         excel_data.append(row)
 
     excel_data.sort(key=lambda row:datetime.strptime(row[0], '%Y-%m-%d'))
-
+    
+    # Deletes old, unsorted data
     ws.delete_rows(2, ws.max_row-1)
 
+    # Appends new, sorted data
     for row in excel_data:
         ws.append(row)
 
@@ -75,24 +92,26 @@ def exists(input_date: str, ws) -> bool:
                 return True
         return False
 
-def write_mood(mood: int, late: bool, desc: str, importance: bool, input_date: str, sprdsht_dir: str) -> None:
-    if input_date != None:
-        input_date = datetime.strptime(input_date, '%Y%m%d').date()
-    elif not late:
-        input_date = date.today()
+def write_mood(entry: Entry) -> None:
+    if entry.input_date != None:
+        entry.input_date = datetime.strptime(entry.input_date, '%Y%m%d').date()
+    elif not entry.late:
+        entry.input_date = date.today()
     else:
-        input_date = date.today() - timedelta(days = 1)
+        entry.input_date = date.today() - timedelta(days = 1)
 
-    wb = openpyxl.load_workbook(sprdsht_dir)
+    wb = openpyxl.load_workbook(entry.sprdsht_dir)
     ws = wb.active
-    data = [str(input_date), str(mood), importance, desc]
-
-    if exists(str(input_date), ws):
+    data = [entry.input_date, str(entry.mood), entry.importance, entry.description]
+    
+    # Make sure that the date doesn't already
+    # contain data.
+    if exists(str(entry.input_date), ws):
         print("You've already entered data.")
         exit()
 
     ws.append(data)
-    wb.save(sprdsht_dir)
+    wb.save(entry.sprdsht_dir)
 
 def main():
     cli_parse()
