@@ -9,16 +9,12 @@ def obtain_data(days: int, sprdshtdir: str) -> None:
     )
 
     last_rows=df.tail(days)
-
     dates=last_rows["Date"].tolist()
     moods=last_rows["Mood"].tolist()
 
-    #tuples = [df.iloc[i].tolist() for i in range(df.shape[0])]
-
-    print(dates, moods)
     return dates, moods
 
-def visualize(dates: tuple, moods: tuple):
+def visualize(dates: tuple, moods: tuple) -> None:
     plt.plot(dates, moods, marker="o")
     plt.xlabel("Date")
     plt.ylabel("Mood")

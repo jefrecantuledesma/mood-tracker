@@ -16,8 +16,7 @@ class Entry:
     description: str
     sprdsht_dir: str
 
-def cli_parse():
-    
+def cli_parse() -> None: 
     parser = ap.ArgumentParser(description="A CLI program to track your daily mood.")
 
     parser.add_argument("-e", "--enter", action="store_true", help="Input your daily mood.")
@@ -49,7 +48,7 @@ def cli_parse():
         if args.enter_date:
             sort_data(sprdsht_dir)
 
-def sort_data(sprdsht_dir: str):
+def sort_data(sprdsht_dir: str) -> None:
     wb = openpyxl.load_workbook(sprdsht_dir)
     ws = wb.active
 
@@ -85,28 +84,34 @@ def get_mood() -> int:
     else:
         return mood_int
 
-def exists(input_date: str, ws) -> bool:
+# Checks to see if data already exists for 
+# selected date.
+def exists(entry: Entry, ws) -> bool:
     if ws.max_row >= 2:
         for rows in range(1, ws.max_row):
-            if ws.cell(row=rows, column=1).value == input_date:
+            if ws.cell(row=rows, column=1).value == str(entry.input_date):
                 return True
         return False
 
-def write_mood(entry: Entry) -> None:
+def determine_date(entry: Entry) -> Entry:
     if entry.input_date != None:
         entry.input_date = datetime.strptime(entry.input_date, '%Y%m%d').date()
     elif not entry.late:
         entry.input_date = date.today()
     else:
         entry.input_date = date.today() - timedelta(days = 1)
+    return entry
+
+def write_mood(entry: Entry) -> None:
+    entry = determine_date(entry)
 
     wb = openpyxl.load_workbook(entry.sprdsht_dir)
     ws = wb.active
-    data = [entry.input_date, str(entry.mood), entry.importance, entry.description]
+    data = [str(entry.input_date), entry.mood, int(entry.importance), entry.description]
     
     # Make sure that the date doesn't already
     # contain data.
-    if exists(str(entry.input_date), ws):
+    if exists(entry, ws):
         print("You've already entered data.")
         exit()
 
